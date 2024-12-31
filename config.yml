@@ -1,0 +1,33 @@
+default: &base
+  print: false
+  time_scaling: scale_from_ns
+  csv_skip: 0
+  n_samples: 10000
+  block_size: 10
+
+cyclictest-ttp-ralf:
+  method: nmixture4
+  n_samples: 10000
+  block_size: 10
+  <<: *base
+  name: cyclictest-ttp-ralf
+  data_filename: events.csv
+  start_events:
+    - expected
+  end_events:
+    - real
+  context:
+    cpu_id: f
+
+jittertest-ttp:
+  method: nmixture3
+  n_samples: 10000
+  block_size: 10
+  <<: *base
+  name: jittertest-ttp
+  data_filename: events.csv
+  start_events:
+    - expected
+  end_events:
+    - real
+  context:

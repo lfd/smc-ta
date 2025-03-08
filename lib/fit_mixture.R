@@ -1,56 +1,28 @@
-fit_mixture <- function(vec, k, scaling = T, diagnostics = F) {
-  stopifnot(!(is.na(k) || is.null(k))) # or default to:  k <- 2 * floor(log10(length(vec)))
-
-  if (scaling) {
-    scale <- attributes(scale(vec, center = FALSE))[["scaled:scale"]]
-    vec <- vec / scale
+fit_mixture <- function(vec, k, scaling = T, diagnostics = F, ...) {
+  k <- min(k, length(unique(vec)))
+  model <- NULL
+  i <- 0
+  while (is.null(model) && i < 10) {
+    tryCatch(
+      expr = {
+        m <- kmeans(vec, k)$cluster
+        if (k < 2) {
+          return(NULL)
+        }
+        if (any(is.na(m))) {
+          m <- k
+        }
+        model <- nor1mix::norMixEM(vec, m, trace = 3)
+      },
+      error = function(e) print(e),
+      finally = {
+        i <- i + 1
+      }
+    )
   }
-
-  params <- tryCatch(
-    expr = {
-      # Estimate the parameters of a mixture of Gaussian distributions
-      # https://rdrr.io/cran/nor1mix/man/norMixFit.html
-      estimation <- nor1mix::norMixEM(vec, k)
-
-      # Returning a list of parameters
-      # https://rdrr.io/cran/nor1mix/man/norMix.html
-      params <- list(
-        mu = estimation$mu,
-        sd = sqrt(estimation$sigma^2), # sigma^2 are the variances
-        mixing_proportions = estimation$w
-      )
-      return(params)
-
-      # Estimate the parameters of a mixture of Gaussian distributions
-      estimation <- mixtools::normalmixEM(vec, k = k, maxrestarts=2000)
-
-      # Returning a list of parameters
-      list(
-        mu = estimation$mu,
-        sd = sqrt(estimation$sigma^2), # sigma^2 are the variances
-        mixing_proportions = estimation$lambda
-      )
-    },
-    error = function(e) {
-      message("Unable to fit mixture with k=", k, " on ", length(vec), " events")
-      print(e)
-
-      list(
-        mu = rep(NA, k),
-        sd = rep(NA, k),
-        mixing_proportions = rep(NA, k)
-      )
-    }
-  )
-
-  if (scaling) {
-    params[["mu"]] <- params[["mu"]] * scale
-    params[["sd"]] <- params[["sd"]] * scale
-  }
-
-  return(params)
+  return(model)
 }
 
-fit_mixture2 <- function(...) fit_mixture(k = 2, ...)
-fit_mixture3 <- function(...) fit_mixture(k = 3, ...)
-fit_mixture4 <- function(...) fit_mixture(k = 4, ...)
+fit_mixture2 <- function(vec, ...) fit_mixture(vec, k = 2, ...)
+fit_mixture3 <- function(vec, ...) fit_mixture(vec, k = 3, ...)
+fit_mixture4 <- function(vec, ...) fit_mixture(vec, k = 4, ...)

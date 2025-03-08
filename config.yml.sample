@@ -1,0 +1,19 @@
+# name: dummy
+# print: false
+time_scaling: ns
+input:
+  filename: data/events.csv
+  line_skip: 1
+  time_scaling: ns
+data:
+  context:
+    cpu_id: f
+  start_events:
+    - expected
+  end_events:
+    - real
+eva-selection:
+  method: bmm
+  block_size: 10
+method: mixture3
+n_samples: 10000

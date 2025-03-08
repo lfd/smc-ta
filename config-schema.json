@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/product.schema.json",
+  "title": "VOROS Pipelifne Configuration",
+  "description": "Configuration values for the pipeline analysis.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Optional name.",
+      "type": "string"
+    },
+    "print": {
+      "description": "Output intermediate relts",
+      "type": "boolean"
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "description": "Path (relative or absolute) of the CSV file to read data from.",
+          "type": "string",
+          "pattern": "\\.csv$"
+        },
+        "line_skip": {
+          "description": "Number of lines to skip from the beginning of the CSV file.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "time_scaling": {
+          "description": "Scaling factor for timestamps.",
+          "enum": [ "ns", "ms" ]
+        }
+      },
+      "required": [ "filename" ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "description": "Optional context information of events.",
+          "type": "object"
+        },
+        "start_events": {
+          "description": "Events initializing a run.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "end_events": {
+          "description": "Events terminating a run.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "eva-selection": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "description": "EVA selection method.",
+          "enum": [ "bmm", "pot", "none" ]
+        },
+        "block_size": {
+          "description": "Block size used for BMM.",
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "threshold": {
+          "description": "POT threshold.",
+          "type": "number"
+        }
+      },
+      "required": [ "method" ],
+      "if": {
+        "properties": {
+          "method": {
+            "const": "bmm"
+          }
+        }
+      },
+      "then": {
+        "required": [ "method", "block_size" ]
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "method": {
+              "const": "pot"
+            }
+          }
+        },
+        "then": {
+          "required": [ "method", "threshold" ]
+        }
+      }
+    },
+    "method": {
+      "enum": [ "mixture2", "mixture3", "mixture4" ]
+    },
+    "n_samples": {
+      "description": "Number of samples to generate from model.",
+      "type": "integer",
+      "exclusiveMinimum": 0
+    }
+  },
+  "required": [ "input", "eva-selection", "method" ]
+}

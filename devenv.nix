@@ -12,8 +12,6 @@ let
     tidyverse
     multidplyr
     tidymodels
-    broom_mixed # converting bayesian models to tidy tibbles
-    dotwhisker # visualizing regression results
 
     reshape2
 
@@ -29,7 +27,6 @@ let
 
     corrr
 
-    qqconf
     #ggplotr
 
     ggstats
@@ -37,7 +34,6 @@ let
     quantreg # for ggplot::stat_quantile()
     igraph # graph / state machines
     ggh4x
-    treemapify
 
     furrr
     progressr
@@ -48,16 +44,20 @@ let
     styler
   ];
   RStudio-with-packages = pkgs.rstudioWrapper.override { inherit packages; };
-  R-with-packages = pkgs.rstudioWrapper.override { inherit packages; };
+  R-with-packages = pkgs.rWrapper.override { inherit packages; };
 in
 {
   # https://devenv.sh/packages/
   packages = with pkgs; [
-    RStudio-with-packages
+    #RStudio-with-packages
+    R-with-packages
     curl.dev
     openssl
     libpng.dev # for tikzDevice
     fftw.dev
+
+    yq
+    nlohmann_json_schema_validator
   ];
 
   # https://devenv.sh/languages/

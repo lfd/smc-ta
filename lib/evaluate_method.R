@@ -1,8 +1,8 @@
-evaluate_method <- function(df.trans, N, simulation_config, fit_fun = NULL, Q = NULL, return.type = "trans") {
-  start_events <- simulation_config[["start_events"]]
-  end_events <- simulation_config[["end_events"]]
-  P1 <- simulation_config[["P1"]]
-  sample_fun <- simulation_config[["sample_fun"]]
+evaluate_method <- function(df.trans, N, options, P = NULL, Q = NULL, return.type = "trans") {
+  start_events <- options[["start_events"]]
+  end_events <- options[["end_events"]]
+  sample_fun <- options[["sample_fun"]]
+  fit_fun <- options$fit_fun
 
   if (is.null(df.trans)) {
     abort("df.trans is NULL")
@@ -11,33 +11,31 @@ evaluate_method <- function(df.trans, N, simulation_config, fit_fun = NULL, Q = 
     abort("N is NULL")
   }
 
+  source(here::here("lib2", "simulate.R"))
 
   ## 1. Fitting
   if (is.null(Q)) {
-    stopifnot(!is.null(fit_fun))
-    Q <- method_fit.matrix(df.trans, fit_fun)
+    abort()
+    stopifnot(!is.null(options$fit_fun))
+    Q <- method_fit.matrix(df.trans, options$fit_fun)
     # assign("Q", Q, envir = parent.frame())
     message("Fitted Q")
   }
 
 
-  P <- df.trans |>
-    as.data.table() |>
-    conv_transition_to_probs.dt() |>
-    format_probs_matrix(start_events, max_iter = 1) |>
-    magrittr::extract2(1)
+  if (is.null(P)) {
+    abort()
+    P <- df.trans |>
+      as.data.table() |>
+      conv_transition_to_probs.dt() |>
+      format_probs_matrix(start_events, max_iter = 1) |>
+      magrittr::extract2(1)
 
-  message("Derived P")
-
-  # P1 - P
+    message("Derived P")
+  }
 
   s_fun <- function(from, to) {
-    params <- NULL
-    if (is.matrix(Q)) {
-      params <- Q[from, to, ]
-    } else {
-      params <- purrr::pluck(Q, "params", which(Q$event.from == from & Q$event.to == to))
-    }
+    params <- Q[from, to][[1]]
     sampling_possible <- !(
       is.null(params) || (purrr::is_list(params) && purrr::list_c(params) %>%
         {
@@ -57,7 +55,7 @@ evaluate_method <- function(df.trans, N, simulation_config, fit_fun = NULL, Q = 
   }
 
   simulator <- NULL
-  if (return.type == "trans" || return.type == "transition") {
+  if (stringr::str_starts(return.type, "trans")) {
     simulator <- run_simulation
   } else if (return.type == "path") {
     simulator <- run_path_simulation

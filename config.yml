@@ -1,33 +1,84 @@
-default: &base
-  print: false
-  time_scaling: scale_from_ns
-  csv_skip: 0
+dummy: &dummy
+  # name: dummy
+  input:
+    filename: events.csv
+    line_skip: 0
+  data:
+    context:
+      cpu_id: f
+    start_events:
+      - expected
+    end_events:
+      - real
+  eva-selection:
+    method: bmm
+    block_size: 10
+    threshold: 0.0001
+  method: mixture3
   n_samples: 10000
-  block_size: 10
 
-cyclictest-ttp-ralf:
-  method: nmixture4
-  n_samples: 10000
-  block_size: 10
-  <<: *base
-  name: cyclictest-ttp-ralf
-  data_filename: events.csv
-  start_events:
-    - expected
-  end_events:
-    - real
-  context:
-    cpu_id: f
+generated: &generated
+  name: generated
+  input:
+    filename: data/generated/events.csv
+    line_skip: 1
+    time_scaling: "us"
+  data:
+    # no context
+    start_events:
+      - a
+    end_events:
+      - d
+  eva-selection:
+    method: bmm
+    block_size: 3
+  model:
+    method: mixture2
+  simulation:
+    n_samples: 1000
 
-jittertest-ttp:
-  method: nmixture3
-  n_samples: 10000
-  block_size: 10
-  <<: *base
-  name: jittertest-ttp
-  data_filename: events.csv
-  start_events:
-    - expected
-  end_events:
-    - real
-  context:
+generated-recurring: &generated-recurring
+  name: generated-recurring
+  input:
+    filename: data/generated-recurring/events.csv
+    line_skip: 1
+    time_scaling: "us"
+  data:
+    # no context
+    start_events:
+      - a
+    end_events:
+      - d
+  eva-selection:
+    method: bmm
+    block_size: 3
+  model:
+    method: mixture2
+  simulation:
+    n_samples: 1000
+
+cyclictest: &cyclictest
+  name: cyclictest
+  input:
+    filename: data/cyclictest/events.csv
+    line_skip: 0
+    time_scaling: "ns"
+  data:
+    context:
+      cpu: f
+    start_events:
+      - expected
+    end_events:
+      - real
+  eva-selection:
+    method: bmm
+    block_size: 10
+  model:
+    method: mixture4
+  simulation:
+    n_samples: 10000
+
+default:
+  #<<: *generated
+  #<<: *generated-recurring
+  <<: *cyclictest

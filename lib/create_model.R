@@ -1,8 +1,8 @@
 create_model <- function(transitions, options) {
-  source(here::here("lib2/transform1.R"))
-  source(here::here("lib2/derive_P.R"))
-  source(here::here("lib2/fit.R"))
-  source(here::here("lib2/fit_mixture.R"))
+  source(here::here("lib/transform1.R"))
+  source(here::here("lib/derive_P.R"))
+  source(here::here("lib/fit.R"))
+  source(here::here("lib/fit_mixture.R"))
 
   required_fields <- c("initial_states", "absorbing_states", "fit_fun")
   stopifnot(all(required_fields %in% names(options)))

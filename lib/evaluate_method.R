@@ -11,7 +11,7 @@ evaluate_method <- function(df.trans, N, options, P = NULL, Q = NULL, return.typ
     abort("N is NULL")
   }
 
-  source(here::here("lib2", "simulate.R"))
+  source(here::here("lib", "simulate.R"))
 
   ## 1. Fitting
   if (is.null(Q)) {

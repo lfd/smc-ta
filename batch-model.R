@@ -156,7 +156,7 @@ library(logger)
 
   saveRDS(model_max, here::here("data", config$name, "_model_max-10000-bmm10_rem.rds"))
 
-  diff<- end.time - start.time
+  diff <- end.time - start.time
 
   print(glue::glue("Model Evaluation Time: Start={start.time} - End={end.time} = {diff}"))
 }

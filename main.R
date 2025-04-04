@@ -4,48 +4,7 @@ library(logger)
 
 # Set config via "R_CONFIG_ACTIVE"
 
-{
-  TIME_SCALES <- list(
-    ms = \(x) x * 1e-3,
-    us = \(x) x * 1e-6,
-    ns = \(x) x * 1e-9,
-    ps = \(x) x * 1e-12
-  )
-  FIT_FUNS <- list(
-    mixture2 = \(vec) fit_mixture(vec, 2),
-    mixture3 = \(vec) fit_mixture(vec, 3),
-    mixture4 = \(vec) fit_mixture(vec, 4)
-  )
-  METHODS <- list(
-    mixture2 = list(
-      fit_fun = \(vec) fit_mixture(vec, 2),
-      sample_fun = \(n = 1, params) nor1mix::rnorMix(n, params),
-      d_generator = \(fit) function(x) {
-        fit[1, "w"] * dnorm(x, mean = fit[1, "mu"], sd = fit[1, "sigma"]) +
-          fit[2, "w"] * dnorm(x, mean = fit[2, "mu"], sd = fit[2, "sigma"])
-      }
-    ),
-    mixture3 = list(
-      fit_fun = \(vec) fit_mixture(vec, 3),
-      sample_fun = \(n = 1, params) nor1mix::rnorMix(n, params),
-      d_generator = \(fit) function(x) {
-        fit[1, "w"] * dnorm(x, mean = fit[1, "mu"], sd = fit[1, "sigma"]) +
-          fit[2, "w"] * dnorm(x, mean = fit[2, "mu"], sd = fit[2, "sigma"]) +
-          fit[3, "w"] * dnorm(x, mean = fit[3, "mu"], sd = fit[3, "sigma"])
-      }
-    ),
-    mixture4 = list(
-      fit_fun = \(vec) fit_mixture(vec, 4),
-      sample_fun = \(n = 1, params) nor1mix::rnorMix(n, params),
-      d_generator = \(fit) function(x) {
-        fit[1, "w"] * dnorm(x, mean = fit[1, "mu"], sd = fit[1, "sigma"]) +
-          fit[2, "w"] * dnorm(x, mean = fit[2, "mu"], sd = fit[2, "sigma"]) +
-          fit[3, "w"] * dnorm(x, mean = fit[3, "mu"], sd = fit[3, "sigma"]) +
-          fit[4, "w"] * dnorm(x, mean = fit[4, "mu"], sd = fit[4, "sigma"])
-      }
-    )
-  )
-}
+source(here::here("_params.R"))
 
 {
   config <- config::get(use_parent = FALSE)
@@ -106,6 +65,8 @@ library(logger)
   }
 
   stopifnot(all(c("timestamp", "event") %in% colnames(event.log)))
+
+  rm(options, context)
 }
 
 if (config$name == "cyclictest") {
@@ -116,10 +77,10 @@ if (config$name == "cyclictest") {
 }
 
 {
-  source(here::here("lib2/filter_events.R"))
-  source(here::here("lib2/transform1.R"))
-  source(here::here("lib2/transform2.R"))
-  source(here::here("lib2/select_extrems.R"))
+  source(here::here("lib/filter_events.R"))
+  source(here::here("lib/transform1.R"))
+  source(here::here("lib/transform2.R"))
+  source(here::here("lib/select_extrems.R"))
 
   transitions <- event.log |>
     filter_events(config$data) |>
@@ -134,7 +95,7 @@ if (F) {
 
   # B. Filtering
   {
-    source(here::here("lib2/filter_events.R"))
+    source(here::here("lib/filter_events.R"))
 
     event.log <- filter_events(event.log, options = config$data)
 
@@ -162,7 +123,7 @@ if (F) {
   {
     log_info("Transform event log to transition log")
 
-    source(here::here("lib2/transform1.R"))
+    source(here::here("lib/transform1.R"))
 
     trans.log <- transform1(event.log, options$context)
 
@@ -181,7 +142,7 @@ if (F) {
   {
     log_info("Derive transition probabilities")
 
-    source(here::here("lib2/derive_P.R"))
+    source(here::here("lib/derive_P.R"))
     options <- config$data
 
     # 1-step
@@ -199,7 +160,7 @@ if (F) {
   {
     log_info("Tranform transitions to paths")
 
-    source(here::here("lib2/transform2.R"))
+    source(here::here("lib/transform2.R"))
     options <- config$data
 
     path.log <- transform2(trans.log, by = options$context)
@@ -211,11 +172,18 @@ if (F) {
 {
   options <- config$model
 
-  source(here::here("lib2/create_model.R"))
+  source(here::here("lib/create_model.R"))
   model <- source.data |>
     create_model(options)
 
-  saveRDS(model, file = here::here("data", config$name, "model.rds"))
+  {
+    f_path <- here::here("data", config$name, "model.rds")
+    if (file.exists(f_path)) {
+      warn("Skip saving model: file already exists", data = f_path)
+    } else {
+      saveRDS(model, file = f_path)
+    }
+  }
 
   generate_mixture_density <- function(fit) {
     required_cols <- c("w", "mu", "sigma")
@@ -253,7 +221,7 @@ if (F) {
     ggplot() +
     scale_x_continuous("Holding Time", limits = c(0, NA), labels = scales::label_number(scale_cut = scales::cut_si("s"))) +
     scale_y_continuous("Density [a.u.]") +
-    #stat_bin(aes(x = duration, y = after_stat(density)), binwidth = config$input$time_scale(0.5)) +
+    # stat_bin(aes(x = duration, y = after_stat(density)), binwidth = config$input$time_scale(0.5)) +
     stat_bin(aes(x = duration, y = after_stat(density)), bins = 100) +
     facet_wrap(~transition, scales = "free") +
     scale_color_discrete(NULL, label = \(x) stringr::str_to_title(x)) +
@@ -309,7 +277,7 @@ if (F) {
 {
   options <- config$simulation
 
-  source(here::here("lib2/evaluate_method.R"))
+  source(here::here("lib/evaluate_method.R"))
 
   path.fit <- source.data |>
     evaluate_method(
@@ -319,7 +287,14 @@ if (F) {
       P = model$P,
       return.type = "path"
     )
-  saveRDS(path.fit, file = here::here("data", config$name, "path-fit.rds"))
+  {
+    f_path <- here::here("data", config$name, "path-fit.rds")
+    if (file.exists(f_path)) {
+      warn("Skip saving simulation data: file already exists", data = f_path)
+    } else {
+      saveRDS(path.fit, file = f_path)
+    }
+  }
 
   require(ggplot2)
   data <- rbindlist(
@@ -337,20 +312,22 @@ if (F) {
       data = filter(data, source == "model"),
       aes(y = after_stat(density)),
       bins = 100,
-      #binwidth = 1e-5,
+      # binwidth = 1e-5,
       na.rm = TRUE,
-      geom = "line") +
+      geom = "line"
+    ) +
     stat_bin(
       data = filter(data, source == "measurement"),
       aes(y = after_stat(density)),
       bins = 100,
-      #binwidth = 1e-5,
+      # binwidth = 1e-5,
       na.rm = TRUE,
-      geom = "line") +
+      geom = "line"
+    ) +
 
     # stat_density(aes(y = after_stat(density)), geom = "line", position = "identity") +
 
-    scale_x_continuous("Absorbing Time", limits = c(0, NA), labels = scales::label_number(scale_cut = scales::cut_si("s")), expand = expansion(add = c(0, 0), mult = c(0, .05))) +
+    scale_x_continuous("Execution Time", limits = c(0, NA), labels = scales::label_number(scale_cut = scales::cut_si("s")), expand = expansion(add = c(0, 0), mult = c(0, .05))) +
     scale_y_continuous("Density [a.u.]", breaks = c(0)) +
     scale_color_discrete(NULL, label = \(x) stringr::str_to_title(x)) +
     theme_bw() +
@@ -363,35 +340,91 @@ if (F) {
   print(m_plot)
   if (F) {
     ggsave(here::here("img", config$name, "latency.png"), width = 20, height = 15, units = "cm")
+  } else if (is4paper) {
+    m_plot +
+      guides(color = guide_legend(position = "inside", direction = "horizontal")) +
+      scale_x_continuous("Execution Time [µs]", labels = \(x) x * 1e6) +
+      theme(
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.justification.inside = c(1-0.02, 1 - 0.01),
+        # axis.text.x = element_text(angle = 20, vjust = 1, hjust=0.5)
+      )
+    ggsave(
+      #here::here("img", "paper", config$name, "distribution-tail.tikz"),
+      #device = tikzDevice::tikz,
+      #sanitize = T,
+      here::here("img", "paper", config$name, "distribution.png"),
+      width = 8.6,
+      height = 6,
+      units = "cm"
+    )
   }
-  m_plot +
+
+  mt_plot <- m_plot +
     coord_cartesian(xlim = c(quantile(data[source == "measurement", duration], .95), NA), ylim = c(0, 0.05 * 1e5)) +
-    geom_point(data = data[, .(max = max(duration)), by = c("source")], aes(x = max, y = 0)) +
+    #geom_point(data = data[, .(max = max(duration)), by = c("source")], aes(x = max, y = 0)) +
+    geom_vline(data = data[, .(max = max(duration)), by = c("source")], aes(xintercept = max, color = source)) +
     # geom_label(data = data[, .(max= max(duration)), by = c("source")], aes(x = max, y = 0, label = scales::label_number(scale_cut = scales::cut_si("s"))(max)), nudge_y = 0.0015e5, show.legend = FALSE) +
     labs(x = "Absorbing Time (> 95% quantile)")
+  print(mt_plot)
   if (F) {
     ggsave(here::here("img", config$name, "latency-tail.png"), width = 20, height = 15, units = "cm")
+  } else if (is4paper) {
+    mt_plot +
+      guides(color = guide_legend(position = "inside", direction = "horizontal")) +
+      scale_x_continuous("Execution Time [µs]", labels = \(x) x * 1e6) +
+      theme(
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.justification.inside = c(1-0.02, 1 - 0.01),
+        # axis.text.x = element_text(angle = 20, vjust = 1, hjust=0.5)
+      )
+    ggsave(
+      #here::here("img", "paper", config$name, "distribution-tail.tikz"),
+      #device = tikzDevice::tikz,
+      #sanitize = T,
+      here::here("img", "paper", config$name, "distribution-tail.png"),
+      width = 8.6,
+      height = 6,
+      units = "cm"
+    )
   }
 
   q_plot <- data |>
     as.data.frame() |>
     reframe(
-      q = c(.75, .8, .85, .9, .95, .99, .999, 1),
-      q_name = ordered(q, labels = scales::label_percent(0.1)(q)),
+      q = c(.75, .8, .85, .9, .95, .99, .999, .9999, .99999),
+      q_name = ordered(q, labels = scales::label_percent(0.001)(q)),
       value = quantile(duration, q),
       .by = c("source")
     ) |>
     ggplot(aes(x = q_name, y = value, color = source)) +
-    geom_point() +
-    scale_y_continuous("Holding Time", limits = c(0, NA), labels = scales::label_number(scale_cut = scales::cut_si("s"))) +
+    geom_point(shape = 1) +
+    geom_hline(data = summarise(data, wcet = max(duration), .by = c("source")), aes(yintercept = wcet, color = source)) +
+    scale_y_continuous("Execution Time [µs]",
+      limits = c(0, NA),
+      labels = \(x) x * 1e6,
+      # labels = scales::label_number(scale_cut = scales::cut_si("s"))
+    ) +
     labs(x = "Quantile") +
     theme_bw() +
     scale_color_discrete(NULL, label = \(x) stringr::str_to_title(x)) +
     theme(legend.position = "bottom")
 
   print(q_plot)
-
   if (F) {
     ggsave(here::here("img", config$name, "quantiles.png"), width = 20, height = 15, units = "cm")
+  } else if (is4paper) {
+    q_plot +
+      guides(color = guide_legend(position = "inside", direction = "horizontal")) +
+      theme(
+        legend.justification.inside = c(0.5, 0.01),
+        axis.text.x = element_text(angle = 20, vjust = 1, hjust = 0.5)
+      )
+    ggsave(here::here("img", "paper", config$name, "quantiles.tikz"), device = tikzDevice::tikz, sanitize = T, width = 8.6, height = 6, units = "cm")
   }
+
+  rm(q_plot, mt_plot, m_plot)
+  rm(options)
 }
